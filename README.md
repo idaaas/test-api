@@ -16,6 +16,6 @@ Développer une API REST permettant de créer et supprimer des clusters en suiva
 - l'exécutable de l'API devra pouvoir être dockerizé pour pouvoir être déployé sur Kubernetes
 
 ## Livrables
- - code sur repo github avec Readme pour procédure de build/test
+ - code sur repo github avec Readme pour procédure de build/test (ajouter une branche sur le repo publique)
  - docker-compose pour lancer la BDD + API
  - date limite 16 juillet
