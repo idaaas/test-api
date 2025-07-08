@@ -1,0 +1,296 @@
+openapi: 3.0.3
+info:
+  title: Ubiquity API
+  version: '0.3'
+tags:
+  - name: clusters
+    description: Computing clusters
+  - name: operations
+    description: Long running operations
+paths:
+  /v1/clusters:
+    get:
+      operationId: v1_cluster_list
+      description: API endpoint which return cluster list
+      tags:
+        - clusters
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Returns a paginated list of clusters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  next_page_token:
+                    type: string
+                    description: token to retrieve next page
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Cluster'
+              examples:
+                clusterEmptyList:
+                  summary: "No cluster exists for your organization"
+                  value:
+                    items: []
+    post:
+      operationId: v1_cluster_create
+      description: API endpoint which create a new cluster
+      tags:
+        - clusters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterCreationRequest'
+            examples:
+              ovhCluster:
+                summary: create an ovh cluster
+                value:
+                  name: new ovh cluster
+                  provider: ovh-cloud
+                  region: de1
+              awsCluster:
+                summary: create an aws cluster
+                value:
+                  name: new aws cluster
+                  provider: aws
+                  region: eu-west-1
+        required: true
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+          description: The long running operation for cluster creation has been launched
+          headers:
+            Location:
+              required: true
+              description: The URL of the created operation.
+              schema:
+                type: string
+                format: url
+        '400':
+          description: An error was made in query's body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/clusters/{cluster_id}:
+    delete:
+      operationId: v1_cluster_destroy
+      description: API endpoint which allow cluster to be viewed or edited.
+      parameters:
+        - in: path
+          name: cluster_id
+          schema:
+            $ref: '#/components/schemas/Id'
+          description: A unique value identifying this cluster.
+          required: true
+      tags:
+        - clusters
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: The long running operation to delete a cluster has been created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+          headers:
+            Location:
+              required: true
+              description: The URL of the created operation.
+              schema:
+                type: string
+                format: url
+        '404':
+          description: The cluster does not exists or has already been deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: cluster not found
+  /v1/operations:
+    get:
+      operationId: v1_operations_list
+      description: API endpoint that return operations list
+      tags:
+        - operations
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+          description: Filter by status
+        - in: query
+          name: kind
+          schema:
+            type: string
+            enum:
+              - model-action-rate
+              - model-bid-shading
+              - model-line-item
+              - model-probability-estimator
+              - cluster
+          description: Filter by kind
+      responses:
+        '200':
+          description: Filtered paginated list of operations ordered by created_at field, from most recent to least
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationList'
+                emptyList:
+                  summary: No operation found for your tenant
+                  value:
+                    items: []
+components:
+  schemas:
+    Id:
+      type: string
+      pattern: "^[0-9A-TV-Z]{12}[0-9A-Z*~$=]"
+      example: CLO8F5CS5RT4S
+    Cluster:
+      type: object
+      properties:
+        cluster_id:
+          type: string
+          example: "CLO8F5CS5RT4S"
+          readOnly: true
+        name:
+          type: string
+          example: my cluster name
+          maxLength: 50
+        provider:
+          $ref: '#/components/schemas/ProviderEnum'
+        region:
+          $ref: '#/components/schemas/RegionEnum'
+        contact_points:
+          type: array
+          items:
+            type: string
+            format: ipv4
+        created_at:
+          type: string
+          readOnly: true
+          format: date-time
+        updated_at:
+          type: string
+          readOnly: true
+          format: date-time
+      required:
+        - cluster_id
+        - created_at
+        - contact_points
+        - provider
+        - region
+        - title
+        - updated_at
+    ClusterCreationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 50
+        provider:
+          $ref: '#/components/schemas/ProviderEnum'
+        region:
+          $ref: '#/components/schemas/RegionEnum'
+      required:
+        - provider
+        - region
+        - name
+    OperationList:
+      type: object
+      properties:
+        next_page_token:
+          type: string
+          description: token to get next page
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Operation'
+          minItems: 1
+          maxItems: 100
+    Operation:
+      type: object
+      properties:
+        operation_id:
+          type: string
+          example: "YHG54D6TECX6S"
+          readOnly: true
+        status:
+          type: string
+          enum:
+            - pending
+            - running
+            - succeeded
+            - failed
+          maxLength: 50
+        kind:
+          type: string
+          enum:
+            - model-action-rate
+            - model-bid-shading
+            - model-line-item
+            - model-probability-estimator
+            - cluster
+          maxLength: 50
+        resource_id:
+          type: string
+          example: "YHG54D6TECX6S"
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - operation_id
+        - status
+    ClusterList:
+        type: object
+        properties:
+          items:
+            type: array
+            items:
+                $ref: '#/components/schemas/Cluster'
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error description message
+    ProviderEnum:
+      enum:
+        - ovh-cloud
+        - aws
+      type: string
+      description: |-
+        * `ovh-cloud` - Deploy cluster on OVH Cloud
+        * `aws` - aws
+    RegionEnum:
+      enum:
+        - gra11
+        - de1
+        - eu-west-lz-ams-a
+        - eu-west-1
+      type: string
+      description: |-
+        * `gra11` - OVH Gravelines (only for ovh-cloud)
+        * `de1` - OVH Franckfurt (only for ovh-cloud)
+        * `eu-west-lz-ams-a` - OVH Amsterdam (only for ovh-cloud)
+        * `eu-west-1` - Ireland (only for AWS)
